@@ -29,6 +29,8 @@ void print_error(char*);	//prints error in red
 
 int slow_down_interface(char *, int); //slow down the interface by the specified seconds
 
+void read_fresh_data(int*, int*); //read user input
+
 int main(int argc, char **argv) {
 	int local_port, remote_port, choice = 1, socket_connection, socket_handle,
 			counter;
@@ -42,18 +44,11 @@ int main(int argc, char **argv) {
 	//PRINT THE HEADING
 	printf(ANSI_YELLOW);
 	print_color_text(
-			"\n       ▁ ▂ ▄ ▅ ▆ ▇ █ TCP ABNORMAL CONNECTION SIMULATOR - (Server) █ ▇ ▆ ▅ ▄ ▂ ▁",
+			"\n       ▁ ▂ ▄ ▅ ▆ ▇ █ TCP ABNORMAL CONNECTION SIMULATOR - (Client) █ ▇ ▆ ▅ ▄ ▂ ▁",
 			'Y', 2, 0);
 
-	print_color_text("INITIAL SETUP", 'D', 1, 0);
-	print_color_text("\nPlease enter the remote IP addr:- ", 'D', 0, 0);
+	print_color_text("\nPlease enter the Server IP addr:- ", 'D', 0, 0);
 	scanf("%s", &remote_ip);
-	print_color_text("\nPlease enter the remote port:- ", 'D', 0, 0);
-	scanf("%d", &remote_port);
-	print_color_text("\nPlease enter the local port:- ", 'D', 0, 0);
-	scanf("%d", &local_port);
-	print_color_text("", 'D', 1, 0);
-
 	//slow the network
 	//slow_down_interface(interface, 2);
 
@@ -70,6 +65,10 @@ int main(int argc, char **argv) {
 		//initialize variables to default
 		socket_handle = -1;
 		bzero((char*) &buffer, sizeof(buffer));
+		//draw a line after each demo
+		print_color_text("", 'R', 1, 1);
+		//read fresh user input
+		read_fresh_data(&remote_port, &local_port);
 
 		switch (choice) {
 			case 1:		//Normal Open
@@ -288,7 +287,7 @@ int main(int argc, char **argv) {
 				if (func_listen(socket_handle) > 0) {
 					if ((socket_connection = func_accept(socket_handle)) > 0) {
 						while (counter <= (int) ('F')) {
-							strcat(buffer,(char*)(&counter));
+							strcat(buffer, (char*) (&counter));
 							if (send(socket_handle, buffer, 1, 0) < 0) {
 								print_error("Send failed. ERROR:- ");
 								continue;
@@ -482,6 +481,15 @@ int func_accept(int socket_handle) {
 void func_close_socket(int socket_handle) {
 	close(socket_handle);
 	print_color_text("Closing connection..", 'R', 0, 1);
+}
+
+void read_fresh_data(int* remote_port, int* local_port) {
+	print_color_text("Enter setup data", 'D', 1, 0);
+	print_color_text("\nPlease enter the remote port:- ", 'G', 0, 0);
+	scanf("%d", remote_port);
+	print_color_text("\nPlease enter the local port:- ", 'G', 0, 0);
+	scanf("%d", local_port);
+	print_color_text("", 'D', 1, 0);
 }
 
 void print_error(char* err_msg) {
