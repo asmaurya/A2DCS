@@ -16,7 +16,7 @@ int func_speak(char*, int); // It goes out and connects to the listening applica
 
 int func_listen(int);	// It listens for incoming connections
 
-void print_color_text(char*, char, int);
+void print_color_text(char*, char, int, int);
 
 void print_error(char*);	//prints error in red
 
@@ -35,16 +35,16 @@ int main(int argc, char **argv) {
 	printf(ANSI_YELLOW);
 	print_color_text(
 			"\n       ▁ ▂ ▄ ▅ ▆ ▇ █ TCP ABNORMAL CONNECTION SIMULATOR - (Server) █ ▇ ▆ ▅ ▄ ▂ ▁",
-			'Y', 2);
+			'Y', 2, 0);
 
-	print_color_text("INITIAL SETUP", 'D', 1);
-	print_color_text("\nPlease enter the remote IP addr:- ", 'D', 0);
+	print_color_text("INITIAL SETUP", 'D', 1, 0);
+	print_color_text("\nPlease enter the remote IP addr:- ", 'D', 0, 0);
 	scanf("%s", &remote_ip);
-	print_color_text("\nPlease enter the remote port:- ", 'D', 0);
+	print_color_text("\nPlease enter the remote port:- ", 'D', 0, 0);
 	scanf("%d", &remote_port);
-	print_color_text("\nPlease enter the local port:- ", 'D', 0);
+	print_color_text("\nPlease enter the local port:- ", 'D', 0, 0);
 	scanf("%d", &local_port);
-	print_color_text("", 'D', 1);
+	print_color_text("", 'D', 1, 0);
 
 	//slow the network
 	slow_down_interface(interface, 2);
@@ -55,12 +55,14 @@ int main(int argc, char **argv) {
 		//show menu
 		print_color_text(
 				"\nPlease select one of the following choices:-\n 1. Normal Open\n 2. Simultaneous open\n 3. Active close by server\n 4. Simultaneous Close\n 5. Half Close - Client side\n 6. Half Close - Server side\n 7. Nyte Stream FIFO at the Reciever side\n 8. Quit\n ",
-				'B', 1);
+				'B', 1, 0);
+		print_color_text("CHOICE:= ", 'Y', 0, 0);
+		scanf("%d", &choice);
+		print_color_text("", 'D', 0, 2);
 		switch (choice) {
 
 			case 1:		//Normal Open
 				func_listen(local_port);
-
 				break;
 			case 2:		//simultaneous open
 				break;
@@ -81,7 +83,7 @@ int main(int argc, char **argv) {
 		} /* switch (choice) */
 
 		//switch case
-		choice = 8;
+//		choice = 8;
 	}
 
 	//set network to default speed
@@ -92,7 +94,8 @@ int main(int argc, char **argv) {
 	return (0);
 }
 
-void print_color_text(char *message, char color, int underline) {
+void print_color_text(char *message, char color, int underline,
+		int print_return) {
 	//	?select color
 	switch (color) {
 		case 'R':
@@ -124,7 +127,12 @@ void print_color_text(char *message, char color, int underline) {
 				printf("-");
 		}
 	}
-	if (length >= 79) printf("\n");
+	int i = 0;
+	if (length >= 79 || print_return > 0) {
+		if (length >= 79 && print_return < 1) print_return = 1;
+		for (i = 0; i < print_return; i++)
+			printf("\n");
+	}
 	printf(ANSI_DEFAULT);
 }
 
@@ -135,34 +143,33 @@ int slow_down_interface(char * interface, int secs) {
 	char cmd[68];
 	char cmd_mod[73];
 
-	//prepare the cmd
+//prepare the cmd
 	sprintf(cmd, "tc qdisc add dev %s root handle 1:0 netem delay %dsec 2>&1",
 			interface, secs);
 	sprintf(cmd_mod,
 			"tc qdisc replace dev %s root handle 1:0 netem delay %dsec 2>&1",
 			interface, secs);
 
-	//run the cmd
+//run the cmd
 	fp = popen(cmd, "r");
 	if (fp == NULL) {
-		perror("Please try again. ERROR:- \n");
+		print_error("Please try again. ERROR:- s");
 		exit(0);
 	}
-	//capture the msg by the command for analysis
+//capture the msg by the command for analysis
 	fgets(result, sizeof(path) - 1, fp);
 
-	//if not running as sudo then prompt for doing so and exit
+//if not running as sudo then prompt for doing so and exit
 	if (strstr(result, "not permitted") != NULL) {
-		print_color_text("Please run the program as a superuser", 'R', 1);
-		printf("\n");
+		print_color_text("Please run the program as a superuser", 'R', 1, 1);
 		exit(0);
 	}
-	//if the command has already been issued then run the 'replace' command
+//if the command has already been issued then run the 'replace' command
 	if (strstr(result, "exists") != NULL) {
 		//		printf("%s\n", cmd_mod);
 		fp = popen(cmd_mod, "r");
 		if (fp == NULL) {
-			perror("Please try again. ERROR:- \n");
+			print_error("Please try again. ERROR:- ");
 			exit(0);
 		}
 	}
@@ -175,25 +182,25 @@ int slow_down_interface(char * interface, int secs) {
 
 int func_listen(int local_port) {
 	int socket_handle, socket_connection;
-	struct sockaddr_in listen_addr, client_addr;
-	char buffer[100] = { 0 }; //buffer to receive and send messages
+	struct sockaddr_in listen_addr;	//, client_addr;
+	char buffer[2] = { 0 }; //buffer to receive and send messages
 
-	//create socket
+//create socket
 	if ((socket_handle = socket(AF_INET, SOCK_STREAM, IPPROTO_IP)) < 0) {
 		print_error("Cannot open socket to listen. ERROR:- ");
 		close(socket_handle);
 		return (0);
 	} /* if (sockethandle) */
 
-	//initialize the struct to zero
+//initialize the struct to zero
 	bzero((char*) &listen_addr, sizeof(listen_addr));
 
-	//set up the sockaddr_in
+//set up the sockaddr_in
 	listen_addr.sin_family = AF_INET;
 	listen_addr.sin_addr.s_addr = INADDR_ANY;
 	listen_addr.sin_port = htons(local_port);
 
-	//try binding the server to the port
+//try binding the server to the port
 	if (bind(socket_handle, (struct sockaddr *) &listen_addr,
 			sizeof(listen_addr)) < 0) {
 		close(socket_handle);
@@ -201,14 +208,15 @@ int func_listen(int local_port) {
 		return (0);
 	}
 
-	//listen for incoming connection
+//listen for incoming connection
 	listen(socket_handle, 5);
-	print_color_text("Waiting for incoming connection..", 'D', 0);
+	print_color_text("Waiting for incoming connection..", 'D', 0, 1);
 
-	if ((socket_connection = accept(socket_handle,
-			(struct sockaddr *) &client_addr,
-			(socklen_t*) (sizeof(struct sockaddr_in)))) > 0)
-		print_color_text("Client Connected to server", 'G', 0);
+//	if ((socket_connection = accept(socket_handle,
+//			(struct sockaddr *) &client_addr,
+//			(socklen_t*) (sizeof(struct sockaddr_in)))) > 0)
+	if ((socket_connection = accept(socket_handle, NULL, NULL)) > -1)
+		print_color_text("Client Connected to server", 'G', 0, 2);
 	else {
 		print_error("Could not accept incoming connection. ERROR:- ");
 		return (0);
@@ -216,28 +224,32 @@ int func_listen(int local_port) {
 
 	while (socket_connection > 0) {
 
-		if (read(socket_connection, buffer, 99) < 0) {
+		if (read(socket_connection, buffer, 1) < 0) {
 			close(socket_handle);
 			print_error("Could not read incoming connections. ERROR:- ");
 			return (0);
 		}
-		//detect if command to quit the connection has been called
-		if (buffer == "quit") break;
-		//display message and return the same to client
-		print_color_text("Received: ", 'D', 1);
-		print_color_text(buffer, 'Y', 0);
-		printf("\n");
-		print_color_text("Sending: ", 'D', 1);
-		print_color_text(buffer, 'Y', 0);
-		printf("\n");
 
-		if (write(socket_connection, buffer, 99) < 0) {
+		//display message and return the same to client
+		print_color_text("Received: ", 'D', 0, 0);
+		print_color_text(buffer, 'Y', 0, 1);
+		print_color_text("Sending: ", 'D', 0, 0);
+		print_color_text(buffer, 'Y', 0, 1);
+		print_color_text("", 'D', 0, 2);
+
+		//if(buffer == 'Q')
+
+		if (write(socket_connection, buffer, 1) < 0) {
 			close(socket_handle);
 			print_error("Could not send message to the client. ERROR:- ");
 			return (0);
 		}
 
+		//detect if command to quit the connection has been called
+		if (buffer[0] == 'C') break;
+
 	}
+	print_color_text("Closing Connection..", 'R', 0, 1);
 	close(socket_connection);
 	close(socket_handle);
 	return (1);
