@@ -30,9 +30,10 @@ void print_error(char*);	//prints error in red
 int slow_down_interface(char *, int); //slow down the interface by the specified seconds
 
 int main(int argc, char **argv) {
-	int local_port, remote_port, choice = 1, socket_connection, socket_handle;
-	char buffer[2] = { 0 };
-	char remote_ip[15]={0};
+	int local_port, remote_port, choice = 1, socket_connection, socket_handle,
+			counter;
+	char buffer[2] = { 0 }, temp;
+	char remote_ip[15] = { 0 };
 	char* interface = "lo";
 
 	//slow_down_interface("lo", 2);
@@ -66,9 +67,144 @@ int main(int argc, char **argv) {
 		print_color_text("CHOICE:= ", 'Y', 0, 0);
 		scanf("%d", &choice);
 		print_color_text("", 'D', 0, 2);
-		switch (choice) {
+		//initialize variables to default
+		socket_handle = -1;
+		bzero((char*) &buffer, sizeof(buffer));
 
+		switch (choice) {
 			case 1:		//Normal Open
+				socket_handle = func_bind(local_port);
+				if (func_listen(socket_handle) > 0) {
+
+					if ((socket_connection = func_accept(socket_handle)) > 0) {
+						while (socket_connection > 0) {
+							if (read(socket_connection, buffer, 1) < 0) {
+								func_close_socket(socket_handle);
+								print_error(
+										"Could not read incoming connections. ERROR:- ");
+								return (0);
+							}
+
+							//display message and return the same to client
+							print_color_text("Received: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+							print_color_text("Sending: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+							print_color_text("", 'D', 0, 2);
+
+							if (write(socket_connection, buffer, 1) < 0) {
+								func_close_socket(socket_handle);
+								print_error(
+										"Could not send message to the client. ERROR:- ");
+								return (0);
+							}
+
+							//detect if command to quit the connection has been called
+							if (buffer[0] == 'C') break;
+
+						}
+						print_color_text("Closing Connection..", 'R', 0, 1);
+						func_close_socket(socket_connection);
+					}
+				} else {
+					print_error("Please try again..");
+				}
+				func_close_socket(socket_handle);
+				break;
+			case 2:
+				//simultaneous open
+				if ((socket_handle = func_bind(local_port)) >= 0) {
+					if (func_connect(socket_handle, remote_ip, remote_port)
+							> 0) {
+						if (recv(socket_handle, buffer, 1, 0) < 0) {
+							print_error("Receive failed. ERROR:- ");
+							func_close_socket(socket_handle);
+							continue;
+						} else {
+							print_color_text("Received: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+						}
+						if (send(socket_handle, buffer, 1, 0) < 0) {
+							print_error("Send failed. ERROR:- ");
+							func_close_socket(socket_handle);
+							continue;
+						} else {
+							print_color_text("Send: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+						}
+					}
+				} else {
+					print_error("Please try again..");
+				}
+				func_close_socket(socket_handle);
+
+				break;
+			case 3: 	//active close by server
+				socket_handle = func_bind(local_port);
+				//strcat(buffer, "A");
+				if (func_listen(socket_handle) > 0) {
+					if ((socket_connection = func_accept(socket_handle)) > 0) {
+						if (recv(socket_handle, buffer, 1, 0) < 0) {
+							print_error("Receive failed. ERROR:- ");
+							func_close_socket(socket_handle);
+							continue;
+						} else {
+							print_color_text("Received: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+						}
+						if (send(socket_handle, buffer, 1, 0) < 0) {
+							print_error("Send failed. ERROR:- ");
+							func_close_socket(socket_handle);
+							continue;
+						} else {
+							print_color_text("Send: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+						}
+					}
+				} else {
+					print_error("Please try again. ERROR:- ");
+				}
+				print_color_text("Initiating Active close...", 'G', 0, 1);
+				close(socket_connection);
+				func_close_socket(socket_handle);
+				//print_color_text("Connection closed..", 'R', 0, 1);
+
+				break;
+			case 4:		//active close by client
+				socket_handle = func_bind(local_port);
+				//strcat(buffer, "A");
+				if (func_listen(socket_handle) > 0) {
+					if ((socket_connection = func_accept(socket_handle)) > 0) {
+						if (recv(socket_handle, buffer, 1, 0) < 0) {
+							print_error("Receive failed. ERROR:- ");
+							close(socket_handle);
+							continue;
+						} else {
+							print_color_text("Received: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+						}
+						if (send(socket_handle, buffer, 1, 0) < 0) {
+							print_error("Send failed. ERROR:- ");
+							continue;
+						} else {
+							print_color_text("Send: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+						}
+						print_color_text(
+								"Waiting for Active close by client ..", 'R', 0,
+								1);
+					}
+				} else {
+					print_error("Please try again. ERROR:- ");
+					close(socket_connection);
+					func_close_socket(socket_handle);
+				}
+//				close(socket_connection);
+//				func_close_socket(socket_handle);
+//				while ()
+//				print_color_text("Connection closed..", 'R', 0, 1);
+				break;
+			case 5:		//simultaneous close
 				socket_handle = func_bind(local_port);
 				if (func_listen(socket_handle) > 0) {
 
@@ -88,8 +224,6 @@ int main(int argc, char **argv) {
 							print_color_text(buffer, 'Y', 0, 1);
 							print_color_text("", 'D', 0, 2);
 
-							//if(buffer == 'Q')
-
 							if (write(socket_connection, buffer, 1) < 0) {
 								close(socket_handle);
 								print_error(
@@ -97,25 +231,23 @@ int main(int argc, char **argv) {
 								return (0);
 							}
 
-							//detect if command to quit the connection has been called
-							if (buffer[0] == 'C') break;
-
+							//simultaneous closing of connection
+							print_color_text(
+									"Please enter any character/ number but press <enter> simultaneously on both the systems (Server- Client)",
+									'Y', 0, 1);
+							scanf("%s", &temp);
 						}
-						print_color_text("Closing Connection..", 'R', 0, 1);
 						close(socket_connection);
 					}
 				} else {
 					print_error("Please try again..");
+					func_close_socket(socket_handle);
 				}
-				func_close_socket(socket_handle);
 				break;
-			case 2:		//simultaneous open
-				socket_handle = -1;
-				bzero((char*) &buffer, sizeof(buffer));
-				strcat(buffer, "A");
-				if ((socket_handle = func_bind(local_port)) >= 0) {
-					if (func_connect(socket_handle, remote_ip, remote_port) > 0) {
-
+			case 6:		//Half close by server
+				socket_handle = func_bind(local_port);
+				if (func_listen(socket_handle) > 0) {
+					if ((socket_connection = func_accept(socket_handle)) > 0) {
 						if (recv(socket_handle, buffer, 1, 0) < 0) {
 							print_error("Receive failed. ERROR:- ");
 							close(socket_handle);
@@ -124,55 +256,75 @@ int main(int argc, char **argv) {
 							print_color_text("Received: ", 'D', 0, 0);
 							print_color_text(buffer, 'Y', 0, 1);
 						}
-
 						if (send(socket_handle, buffer, 1, 0) < 0) {
 							print_error("Send failed. ERROR:- ");
-							close(socket_handle);
 							continue;
 						} else {
 							print_color_text("Send: ", 'D', 0, 0);
 							print_color_text(buffer, 'Y', 0, 1);
 						}
+
+						print_color_text("Performing Half close by server..",
+								'R', 0, 1);
+						shutdown(socket_handle, 1);
+
+						print_color_text("Received data after half close", 'Y',
+								1, 1);
+						while (recv(socket_handle, buffer, 1, 0) > 0) {
+							print_color_text("Received: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+						}
+						close(socket_connection);
+						func_close_socket(socket_handle);
 					}
-
 				} else {
-					print_error("Please try again..");
+					print_error("Please try again. ERROR:- ");
+					func_close_socket(socket_handle);
 				}
-
-				func_close_socket(socket_handle);
-
-				break;
-			case 3:		//active close by server
-				break;
-			case 4:		//active close by client
-				break;
-			case 5:		//simultaneous close
-				break;
-			case 6:		//Half close by server
 				break;
 			case 7:		//half close by client
+				counter = 'A';
+				socket_handle = func_bind(local_port);
+				if (func_listen(socket_handle) > 0) {
+					if ((socket_connection = func_accept(socket_handle)) > 0) {
+						while (counter <= (int) ('F')) {
+							strcat(buffer,(char*)(&counter));
+							if (send(socket_handle, buffer, 1, 0) < 0) {
+								print_error("Send failed. ERROR:- ");
+								continue;
+							} else {
+								print_color_text("Send: ", 'D', 0, 0);
+								print_color_text(buffer, 'Y', 0, 1);
+							}
+							counter++;
+						}
+						func_close_socket(socket_handle);
+					}
+				} else {
+					print_error("Please try again. ERROR:- ");
+					func_close_socket(socket_handle);
+				}
 				break;
-			case 8:		//quit
+			case 8:
+				//quit
 				break;
-			default:		// abnormal choice, ask again
+			default:
+				// abnormal choice, ask again
 				break;
 		} /* switch (choice) */
-
-		//switch case
-//		choice = 8;
 	}
 
-	//set network to default speed
-	//slow_down_interface(interface, 0);
+//set network to default speed
+//slow_down_interface(interface, 0);
 
-	//exit
+//exit
 
 	return (0);
 }
 
 void print_color_text(char *message, char color, int underline,
 		int print_return) {
-	//	?select color
+//	?select color
 	switch (color) {
 		case 'R':
 			printf(ANSI_RED);
@@ -254,9 +406,7 @@ int slow_down_interface(char * interface, int secs) {
 	}
 	/* close file pipe*/
 	pclose(fp);
-
 	return (1);
-
 }
 
 int func_bind(int local_port) {
@@ -269,7 +419,6 @@ int func_bind(int local_port) {
 		close(socket_handle);
 		return (-1);
 	}
-
 
 //initialize the struct to zero
 	bzero((char*) &listen_addr, sizeof(listen_addr));
@@ -286,7 +435,7 @@ int func_bind(int local_port) {
 		print_error("Cannot bind server to the specified socket. ERROR:- ");
 		return (-1);
 	}
-	print_color_text("Socket binded to port - ", 'D',0,0);
+	print_color_text("Socket binded to port - ", 'D', 0, 0);
 	printf(ANSI_GREEN);
 	printf("%d\n", local_port);
 	printf(ANSI_DEFAULT);
@@ -316,7 +465,7 @@ int func_connect(int socket_handle, char* remote_ip, int remote_port) {
 		print_error("Could not connect to the remote machine. ERROR:- ");
 		return (0);
 	}
-	print_color_text("Connected to the remote machine..", 'G', 0,1);
+	print_color_text("Connected to the remote machine..", 'G', 0, 1);
 	return (1);
 }
 
