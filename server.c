@@ -99,11 +99,13 @@ int main(int argc, char **argv) {
 							}
 
 							//detect if command to quit the connection has been called
-							if (buffer[0] == 'C') break;
+							if (buffer[0] == 'C')
+								break;
 
 						}
 						print_color_text("Closing Connection..", 'R', 0, 1);
-						func_close_socket(socket_connection);
+						close(socket_connection);
+						func_close_socket(socket_handle);
 					}
 				} else {
 					print_error("Please try again..");
@@ -208,35 +210,34 @@ int main(int argc, char **argv) {
 				if (func_listen(socket_handle) > 0) {
 
 					if ((socket_connection = func_accept(socket_handle)) > 0) {
-						while (socket_connection > 0) {
-							if (read(socket_connection, buffer, 1) < 0) {
-								close(socket_handle);
-								print_error(
-										"Could not read incoming connections. ERROR:- ");
-								return (0);
-							}
-
-							//display message and return the same to client
-							print_color_text("Received: ", 'D', 0, 0);
-							print_color_text(buffer, 'Y', 0, 1);
-							print_color_text("Sending: ", 'D', 0, 0);
-							print_color_text(buffer, 'Y', 0, 1);
-							print_color_text("", 'D', 0, 2);
-
-							if (write(socket_connection, buffer, 1) < 0) {
-								close(socket_handle);
-								print_error(
-										"Could not send message to the client. ERROR:- ");
-								return (0);
-							}
-
-							//simultaneous closing of connection
-							print_color_text(
-									"Please enter any character/ number but press <enter> simultaneously on both the systems (Server- Client)",
-									'Y', 0, 1);
-							scanf("%s", &temp);
+						if (read(socket_connection, buffer, 1) < 0) {
+							close(socket_handle);
+							print_error(
+									"Could not read incoming connections. ERROR:- ");
+							return (0);
 						}
+
+						//display message and return the same to client
+						print_color_text("Received: ", 'D', 0, 0);
+						print_color_text(buffer, 'Y', 0, 1);
+						print_color_text("Sending: ", 'D', 0, 0);
+						print_color_text(buffer, 'Y', 0, 1);
+						print_color_text("", 'D', 0, 2);
+
+						if (write(socket_connection, buffer, 1) < 0) {
+							close(socket_handle);
+							print_error(
+									"Could not send message to the client. ERROR:- ");
+							return (0);
+						}
+
+						//simultaneous closing of connection
+						print_color_text(
+								"Please enter any character/ number but press <enter> simultaneously on both the systems (Server- Client)",
+								'Y', 0, 1);
+						scanf("%s", &temp);
 						close(socket_connection);
+						func_close_socket(socket_handle);
 					}
 				} else {
 					print_error("Please try again..");
@@ -282,10 +283,20 @@ int main(int argc, char **argv) {
 				}
 				break;
 			case 7:		//half close by client
-				counter = 'A';
+				//counter = 'A';
 				socket_handle = func_bind(local_port);
 				if (func_listen(socket_handle) > 0) {
 					if ((socket_connection = func_accept(socket_handle)) > 0) {
+						if (recv(socket_handle, buffer, 1, 0) < 0) {
+							print_error("Receive failed. ERROR:- ");
+							close(socket_handle);
+							continue;
+						} else {
+							print_color_text("Received: ", 'D', 0, 0);
+							print_color_text(buffer, 'Y', 0, 1);
+						}
+
+						counter = (int)buffer[0];
 						while (counter <= (int) ('F')) {
 							strcat(buffer, (char*) (&counter));
 							if (send(socket_handle, buffer, 1, 0) < 0) {
@@ -297,6 +308,7 @@ int main(int argc, char **argv) {
 							}
 							counter++;
 						}
+						close(socket_connection);
 						func_close_socket(socket_handle);
 					}
 				} else {
@@ -359,7 +371,8 @@ void print_color_text(char *message, char color, int underline,
 	}
 	int i = 0;
 	if (length >= 79 || print_return > 0) {
-		if (length >= 79 && print_return < 1) print_return = 1;
+		if (length >= 79 && print_return < 1)
+			print_return = 1;
 		for (i = 0; i < print_return; i++)
 			printf("\n");
 	}
